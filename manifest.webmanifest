@@ -1,0 +1,14 @@
+{
+  "name": "תיעוד טיפולים",
+  "short_name": "תיעוד",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fcf7f6",
+  "theme_color": "#b57a95",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

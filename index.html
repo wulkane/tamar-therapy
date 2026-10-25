@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b57a95">
+  <title>תיעוד טיפולים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ספריית איורים: פרח, עלה וזר. הצבעים נשלטים ממשתני CSS (‎--petal, --center, --leaf) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="flower" viewBox="0 0 40 40">
+      <g style="fill:var(--petal,#f4c2d0)">
+        <ellipse cx="20" cy="10.5" rx="6.5" ry="9.5"/>
+        <ellipse cx="20" cy="10.5" rx="6.5" ry="9.5" transform="rotate(72 20 20)"/>
+        <ellipse cx="20" cy="10.5" rx="6.5" ry="9.5" transform="rotate(144 20 20)"/>
+        <ellipse cx="20" cy="10.5" rx="6.5" ry="9.5" transform="rotate(216 20 20)"/>
+        <ellipse cx="20" cy="10.5" rx="6.5" ry="9.5" transform="rotate(288 20 20)"/>
+      </g>
+      <g style="fill:var(--petal-in,#fbe3ea)">
+        <ellipse cx="20" cy="13" rx="2.6" ry="5"/>
+        <ellipse cx="20" cy="13" rx="2.6" ry="5" transform="rotate(72 20 20)"/>
+        <ellipse cx="20" cy="13" rx="2.6" ry="5" transform="rotate(144 20 20)"/>
+        <ellipse cx="20" cy="13" rx="2.6" ry="5" transform="rotate(216 20 20)"/>
+        <ellipse cx="20" cy="13" rx="2.6" ry="5" transform="rotate(288 20 20)"/>
+      </g>
+      <circle cx="20" cy="20" r="4.6" style="fill:var(--center,#f3cf7a)"/>
+      <g style="fill:var(--center-dot,#d9a94e)"><circle cx="18.6" cy="19" r=".9"/><circle cx="21.4" cy="19.3" r=".9"/><circle cx="20" cy="21.6" r=".9"/></g>
+    </symbol>
+    <symbol id="leaf" viewBox="0 0 20 40">
+      <path d="M10 1C20 12 20 28 10 39 0 28 0 12 10 1Z" style="fill:var(--leaf,#c4d8bb)"/>
+      <path d="M10 4V36" style="stroke:var(--leaf-vein,#a9c39f)" stroke-width="1.2" fill="none"/>
+    </symbol>
+    <symbol id="sprig" viewBox="0 0 200 220">
+      <path d="M20 215C40 160 70 120 120 90S175 40 180 10" style="stroke:var(--stem,#b3cba8)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M70 135C90 140 100 160 98 175" style="stroke:var(--stem,#b3cba8)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <use href="#leaf" x="34" y="150" width="20" height="40" transform="rotate(-50 44 170)"/>
+      <use href="#leaf" x="82" y="102" width="20" height="40" transform="rotate(60 92 122)"/>
+      <use href="#leaf" x="132" y="58" width="18" height="36" transform="rotate(-35 141 76)"/>
+      <use href="#leaf" x="150" y="40" width="16" height="32" transform="rotate(70 158 56)"/>
+      <use href="#flower" x="152" y="-6" width="46" height="46"/>
+      <use href="#flower" x="78" y="164" width="38" height="38" style="--petal:#dccbee;--petal-in:#efe6f8"/>
+      <use href="#flower" x="104" y="72" width="30" height="30" style="--petal:#f7d3c4;--petal-in:#fde9e0"/>
+    </symbol>
+  </svg>
+
+  <!-- ענפים פורחים בפינות המסך -->
+  <svg class="deco deco-bottom" aria-hidden="true"><use href="#sprig"/></svg>
+  <svg class="deco deco-top" aria-hidden="true"><use href="#sprig"/></svg>
+
+  <header class="topbar">
+    <button id="back" class="icon-btn" aria-label="חזרה" hidden>→</button>
+    <h1 id="title">תיעוד טיפולים</h1>
+    <a href="#/settings" class="icon-btn" aria-label="הגדרות">⚙</a>
+    <svg class="garland" viewBox="0 0 220 60" aria-hidden="true">
+      <use href="#leaf" x="18" y="22" width="14" height="28" transform="rotate(-60 25 36)"/>
+      <use href="#leaf" x="92" y="6" width="14" height="28" transform="rotate(50 99 20)"/>
+      <use href="#leaf" x="150" y="28" width="12" height="24" transform="rotate(-40 156 40)"/>
+      <use href="#flower" x="30" y="10" width="40" height="40"/>
+      <use href="#flower" x="72" y="30" width="26" height="26" style="--petal:#efe4f8"/>
+      <use href="#flower" x="110" y="4" width="32" height="32" style="--petal:#fde3d8"/>
+      <use href="#flower" x="166" y="22" width="22" height="22"/>
+      <use href="#flower" x="0" y="34" width="20" height="20" style="--petal:#efe4f8"/>
+    </svg>
+  </header>
+  <main id="view"></main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
