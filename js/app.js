@@ -614,6 +614,7 @@ async function discard(d) {
 function viewSettings() {
   render('הגדרות', `
     <div class="stack">
+      ${connectError ? `<div class="hint warn"><b>החיבור נכשל:</b> ${esc(connectError)}</div>` : ''}
       <div class="card stack">
         <label>חיבור ל-Google Drive</label>
         <p style="margin:0">${syncLine()}</p>
@@ -667,20 +668,27 @@ function viewSettings() {
   });
 }
 
+// שגיאת החיבור האחרונה מוצגת במסך ההגדרות, כדי שלא תיעלם עם ההודעה הקצרה
+let connectError = '';
+
 async function connect(url, token) {
+  const fail = (msg) => {
+    connectError = msg;
+    if (location.hash === '#/settings') viewSettings();
+    else location.hash = '#/settings';
+  };
   // כתובת מקומית מותרת לבדיקות בלבד
   if (!/^(https:\/\/script\.google(usercontent)?\.com\/|http:\/\/(localhost|127\.0\.0\.1):)/.test(url) || !token) {
-    toast('הכתובת או הקוד לא תקינים');
-    return;
+    return fail('הכתובת או קוד החיבור בקישור לא תקינים. כדאי להעתיק שוב את הקישור המלא.');
   }
   setBackend(url, token);
   try {
     await call('ping');
   } catch (err) {
     disconnect();
-    toast('⚠ ' + err.message);
-    return;
+    return fail(err.message);
   }
+  connectError = '';
   toast('✓ מחובר ל-Google Drive');
   location.hash = '#/';
   runSync();

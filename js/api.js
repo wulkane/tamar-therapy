@@ -33,7 +33,9 @@ export async function call(action, payload = {}) {
       body: JSON.stringify({ token: b.token, action, ...payload }),
     });
   } catch {
-    const err = new Error('אין חיבור לאינטרנט');
+    const err = new Error(navigator.onLine
+      ? 'לא ניתן להגיע לשרת ב-Google. בדקו ב-Apps Script שהפריסה מוגדרת "כל אחד" (Anyone) ולא "רק אני", ושהקישור הועתק במלואו.'
+      : 'אין חיבור לאינטרנט');
     err.offline = true;
     throw err;
   }

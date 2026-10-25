@@ -1,5 +1,5 @@
 // רשת קודם ומטמון כגיבוי: גרסה חדשה נטענת מיד, והאפליקציה נפתחת גם בלי אינטרנט
-const CACHE = 'tamar-v2';
+const CACHE = 'tamar-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/store.js', 'js/recorder.js', 'js/pipeline.js', 'js/api.js'];
 
 self.addEventListener('install', (e) => {
