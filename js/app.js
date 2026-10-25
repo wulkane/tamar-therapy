@@ -624,9 +624,8 @@ function viewSettings() {
             <button class="secondary" id="test">בדיקת חיבור</button>
             <button class="danger" id="disconnect">ניתוק המכשיר</button>
           </div>` : `
-          <p class="muted" style="margin:0">הדרך הפשוטה: לפתוח במכשיר הזה את קישור החיבור שנוצר בהגדרה. או להדביק כאן:</p>
-          <input id="b-url" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec">
-          <input id="b-token" dir="ltr" placeholder="קוד חיבור">
+          <p class="muted" style="margin:0">להעתיק את קישור החיבור (זה שמתחיל ב-https://wulkane.github.io/...) ולהדביק כאן:</p>
+          <textarea id="b-link" dir="ltr" rows="3" placeholder="https://wulkane.github.io/tamar-therapy/#/connect?u=..."></textarea>
           <button id="connect">חיבור</button>`}
       </div>
       <div class="card stack">
@@ -641,7 +640,12 @@ function viewSettings() {
         <button class="secondary" id="export">ייצוא גיבוי</button>
       </div>
     </div>`, '#/');
-  on('#connect', 'click', () => connect($view.querySelector('#b-url').value.trim(), $view.querySelector('#b-token').value.trim()));
+  on('#connect', 'click', () => {
+    // הקישור המלא מכיל את כתובת השרת (u) ואת קוד החיבור (t) אחרי ה-#
+    const text = $view.querySelector('#b-link').value.trim();
+    const q = new URLSearchParams(text.slice(text.indexOf('?') + 1));
+    connect(q.get('u') || '', q.get('t') || '');
+  });
   on('#sync-now', 'click', async () => { await runSync(); viewSettings(); });
   on('#test', 'click', async () => {
     try {
@@ -679,7 +683,7 @@ async function connect(url, token) {
   };
   // כתובת מקומית מותרת לבדיקות בלבד
   if (!/^(https:\/\/script\.google(usercontent)?\.com\/|http:\/\/(localhost|127\.0\.0\.1):)/.test(url) || !token) {
-    return fail('הכתובת או קוד החיבור בקישור לא תקינים. כדאי להעתיק שוב את הקישור המלא.');
+    return fail('הקישור לא תקין או לא הועתק במלואו. צריך להעתיק את כל הקישור, מ-https עד הסוף.');
   }
   setBackend(url, token);
   try {
