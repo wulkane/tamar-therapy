@@ -31,8 +31,10 @@ export async function call(action, payload = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ token: b.token, action, ...payload }),
+      signal: AbortSignal.timeout(90000), // שרת שלא עונה לא תוקע את המסך
     });
-  } catch {
+  } catch (e) {
+    if (e?.name === 'TimeoutError') throw new Error('השרת לא ענה תוך דקה וחצי. אפשר ללחוץ "ניסיון חוזר".');
     const err = new Error(navigator.onLine
       ? 'לא ניתן להגיע לשרת ב-Google. בדקו ב-Apps Script שהפריסה מוגדרת "כל אחד" (Anyone) ולא "רק אני", ושהקישור הועתק במלואו.'
       : 'אין חיבור לאינטרנט');
