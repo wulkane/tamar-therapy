@@ -465,8 +465,14 @@ function updateItemDOM(d, it) {
   if (!box) return;
   box.querySelector('.status').innerHTML = itemStatus(it);
   const ta = box.querySelector('textarea');
-  ta.hidden = !it.clips.length && !it.text;
-  if (document.activeElement !== ta) ta.value = it.text;
+  ta.hidden = !(it.clips.length || it.text || it.writing); // תיבה נפתחת אחרי הקלטה, או בלחיצה על "כתיבה"
+  box.querySelector('[data-write]').hidden = !ta.hidden;
+  if (ta.value !== it.text) {
+    // תמלול שהגיע ברקע מתווסף לטקסט, גם כשתמר באמצע הקלדה, בלי להזיז את הסמן
+    const { selectionStart: s, selectionEnd: e } = ta;
+    ta.value = it.text;
+    if (document.activeElement === ta) ta.setSelectionRange(s, e);
+  }
   const err = it.clips.find((c) => c.status === 'error');
   box.querySelector('.err-line').innerHTML = err ? `${esc(err.error)} <button type="button" class="link-btn" data-retry>ניסיון חוזר</button>` : '';
   box.querySelector('[data-retry]')?.addEventListener('click', () => {
@@ -518,13 +524,14 @@ function viewNew(pid) {
         <span class="timer"></span>
         <span class="status">${itemStatus(it)}</span>
       </button>
-      <textarea data-text rows="3" placeholder="התמלול יופיע כאן, ואפשר לתקן" ${it.clips.length || it.text ? '' : 'hidden'}>${esc(it.text)}</textarea>
+      <button type="button" class="link-btn write-btn" data-write>✎ כתיבה</button>
+      <textarea data-text rows="3" placeholder="אפשר להקליד כאן. התמלול של ההקלטה יופיע כאן ואפשר לתקן אותו." hidden>${esc(it.text)}</textarea>
       <div class="raw err-line"></div>
     </div>`;
 
   render(title, `
     <p class="muted">${fmtDate(d.date)} · <a href="#" id="change-date">שינוי תאריך</a></p>
-    <p class="hint">לוחצים על רובריקה כדי להקליט ולוחצים שוב כדי לעצור. אפשר לדלג על רובריקות. בלי שמות בהקלטות.</p>
+    <p class="hint">לוחצים על רובריקה כדי להקליט ולוחצים שוב כדי לעצור, או על "✎ כתיבה" כדי להקליד. אפשר לדלג על רובריקות, ולערוך כל טקסט. בלי שמות בהקלטות.</p>
     ${goals.length ? `<h2>מטרות התל"א</h2><div class="stack">${goals.map(block).join('')}</div>` : '<p class="muted">עדיין אין תל"א למטופל, ולכן מוצגים רק נושא נוסף והערות.</p>'}
     <div class="divider">${art('leaf')}</div>
     <div class="stack">${block(d.items.find((x) => x.key === 'extra'))}</div>
@@ -537,8 +544,17 @@ function viewNew(pid) {
       <button class="danger" id="discard">ביטול</button>
     </div>`, back);
 
+  if (!hasTranscription()) d.items.forEach((it) => (it.writing = true)); // בלי תמלול, ההקלדה היא הדרך היחידה
   d.items.forEach((it) => updateItemDOM(d, it));
-  if (!hasTranscription()) $view.querySelectorAll('[data-text]').forEach((t) => (t.hidden = false));
+
+  on('[data-write]', 'click', (e) => {
+    const box = e.currentTarget.closest('[data-item]');
+    const it = d.items.find((x) => x.key === box.dataset.item);
+    it.writing = true;
+    saveDraft(d);
+    updateItemDOM(d, it);
+    box.querySelector('textarea').focus();
+  });
 
   on('#change-date', 'click', async (e) => {
     e.preventDefault();
