@@ -261,61 +261,66 @@ function viewLast(id) {
 }
 
 // ---------- ד. הדרכה ----------
-// תיעוד הדרכות להורים או לצוות: תאריך, למי, ומה נאמר (בהקלדה או בהקלטה שמתומללת)
-const AUDIENCES = ['הורים', 'צוות חינוכי', 'אחר'];
+// תיעוד ההדרכה המקצועית שתמר מקבלת מהמדריכה שלה על המטופל: תאריך, שם המדריכה (לא חובה) ומה נאמר
+// (בהקלדה או בהקלטה שמתומללת). אפשר לערוך את הטקסט ואת התמלול גם אחרי השמירה.
+// השדה audience נשמר בשם הישן כדי שלא יידרש שינוי בשרת. עכשיו הוא מכיל את שם המדריכה.
+const LEGACY_AUDIENCES = ['הורים', 'צוות חינוכי', 'אחר'];
+const guideName = (g) => (LEGACY_AUDIENCES.includes(g.audience) ? '' : g.audience || '');
 let guideRec = null; // הקלטה פעילה במסך ההדרכה
 
-function viewGuide(id) {
+function viewGuide(id, editId) {
   const p = db.patient(id);
   const list = db.guidanceOf(id);
+  const editing = editId ? list.find((g) => g.id === editId) : null;
+  if (editId && !editing) return (location.hash = `#/p/${id}/guide`);
+  const names = [...new Set(list.map(guideName).filter(Boolean))];
+  const defaultName = editing ? guideName(editing) : names[0] || '';
+
   render(`הדרכה · ${p.name}`, `
+    <p class="muted">כאן מתעדים את ההדרכה המקצועית שקיבלת מהמדריכה שלך על המטופל.</p>
     <form id="add" class="card stack">
-      <h2 style="margin:0">הדרכה חדשה</h2>
+      <h2 style="margin:0">${editing ? 'עריכת הדרכה' : 'הדרכה חדשה'}</h2>
       <div>
-        <label for="g-date">תאריך</label>
-        <input type="date" id="g-date" value="${todayISO()}" max="${todayISO()}" required>
+        <label for="g-date">תאריך ההדרכה</label>
+        <input type="date" id="g-date" value="${esc(editing ? editing.date : todayISO())}" max="${todayISO()}" required>
       </div>
       <div>
-        <label>למי</label>
-        <div class="row">
-          ${AUDIENCES.map((a, i) => `<label class="chip"><input type="radio" name="aud" value="${a}" ${i === 0 ? 'checked' : ''}> ${a}</label>`).join('')}
-        </div>
-        <input id="g-other" placeholder="למי? (למשל: סייעת, גננת)" hidden style="margin-top:8px">
+        <label for="g-name">שם המדריכה (לא חובה)</label>
+        <input id="g-name" list="g-names" value="${esc(defaultName)}" placeholder="למשל: שם המדריכה">
+        <datalist id="g-names">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
       </div>
       <div>
         <label for="g-text">מה נאמר בהדרכה</label>
-        <textarea id="g-text" placeholder="אפשר להקליד, או ללחוץ על הקלטה ולספר"></textarea>
+        <textarea id="g-text" rows="${editing ? 8 : 4}" placeholder="הערות, הצעות ומה כדאי ליישם בטיפולים. אפשר להקליד, או ללחוץ על הקלטה ולספר">${esc(editing ? editing.text : '')}</textarea>
       </div>
       <div class="row">
         <button type="button" class="secondary" id="g-rec">🎙 הקלטה</button>
         <span class="muted" id="g-status"></span>
       </div>
-      <button>💾 שמירת ההדרכה</button>
+      <div class="row">
+        <button>💾 ${editing ? 'שמירת השינויים' : 'שמירת ההדרכה'}</button>
+        ${editing ? '<button type="button" class="secondary" id="g-cancel">ביטול</button>' : ''}
+      </div>
     </form>
     <h2>הדרכות קודמות</h2>
     ${list.length ? `<div class="stack">${list.map((g) => `
       <div class="card" data-id="${g.id}">
         <div class="row" style="justify-content:space-between">
-          <b>${fmtShort(g.date)} · ${esc(g.audience)}</b>
-          <button type="button" class="danger" data-del aria-label="מחיקת הדרכה">🗑</button>
+          <b>${fmtShort(g.date)}${guideName(g) ? ' · ' + esc(guideName(g)) : ''}</b>
+          <span class="row">
+            <a class="edit-link" href="#/p/${id}/guide/${g.id}">✎ עריכה</a>
+            <button type="button" class="danger" data-del aria-label="מחיקת הדרכה">🗑</button>
+          </span>
         </div>
         <div class="summary-text">${esc(g.text)}</div>
       </div>`).join('')}</div>` : emptyState('עדיין לא תועדו הדרכות.')}
   `, `#/p/${id}`);
 
-  const fileIds = [];
+  const fileIds = [...(editing?.fileIds || [])];
   const $text = $view.querySelector('#g-text');
   const $status = $view.querySelector('#g-status');
   const $recBtn = $view.querySelector('#g-rec');
-
-  function selectedAudience() {
-    const v = $view.querySelector('input[name="aud"]:checked').value;
-    return v === 'אחר' ? ($view.querySelector('#g-other').value.trim() || 'אחר') : v;
-  }
-
-  on('input[name="aud"]', 'change', (e) => {
-    $view.querySelector('#g-other').hidden = e.target.value !== 'אחר';
-  });
+  if (editing) $view.querySelector('#add').scrollIntoView({ block: 'start' });
 
   on('#g-rec', 'click', async () => {
     if (!guideRec) {
@@ -338,7 +343,11 @@ function viewGuide(id) {
     if (!hasTranscription()) { $status.textContent = 'האפליקציה לא מחוברת ל-Google Drive, אז צריך להקליד.'; return; }
     $status.textContent = 'מתמללת…';
     try {
-      const r = await transcribe(blob, { rubric: 'הדרכה ל' + selectedAudience(), date: $view.querySelector('#g-date').value, patient: p.name });
+      const r = await transcribe(blob, {
+        rubric: 'הדרכה מקצועית שהקלינאית קיבלה מהמדריכה שלה על המטופל. הקלינאית מספרת מה נאמר בהדרכה',
+        date: $view.querySelector('#g-date').value,
+        patient: p.name,
+      });
       fileIds.push(r.fileId);
       $text.value = [$text.value.trim(), r.text].filter(Boolean).join('\n\n');
       $status.textContent = '✓ התמלול נוסף, אפשר לתקן לפני השמירה';
@@ -347,24 +356,36 @@ function viewGuide(id) {
     }
   });
 
+  on('#g-cancel', 'click', () => (location.hash = `#/p/${id}/guide`));
+
   on('#add', 'submit', (e) => {
     e.preventDefault();
     if (guideRec) { toast('צריך לעצור את ההקלטה לפני השמירה'); return; }
     const text = $text.value.trim();
     if (!text) { toast('אין עדיין תוכן להדרכה'); return; }
-    db.addGuidance({
-      id: uid(), patientId: id, date: $view.querySelector('#g-date').value || todayISO(),
-      audience: selectedAudience(), text, fileIds, createdAt: new Date().toISOString(),
-    });
-    toast('🌸 ההדרכה נשמרה');
-    viewGuide(id);
+    const entry = {
+      id: editing ? editing.id : uid(), patientId: id,
+      date: $view.querySelector('#g-date').value || todayISO(),
+      audience: $view.querySelector('#g-name').value.trim(), text, fileIds,
+      createdAt: editing ? editing.createdAt : new Date().toISOString(),
+    };
+    if (editing) {
+      db.updateGuidance({ ...entry, editedAt: new Date().toISOString() });
+      toast('🌸 השינויים נשמרו');
+      location.hash = `#/p/${id}/guide`;
+    } else {
+      db.addGuidance(entry);
+      toast('🌸 ההדרכה נשמרה');
+      viewGuide(id);
+    }
   });
 
   on('[data-del]', 'click', (e) => {
     const gid = e.currentTarget.closest('[data-id]').dataset.id;
     if (!confirm('למחוק את ההדרכה?')) return;
     db.deleteGuidance(gid);
-    viewGuide(id);
+    if (editId === gid) location.hash = `#/p/${id}/guide`;
+    else viewGuide(id, editId);
   });
 }
 
@@ -830,7 +851,7 @@ async function route() {
     if (sub === 'tala') return viewTala(id);
     if (sub === 'table') return viewTable(id);
     if (sub === 'last') return viewLast(id);
-    if (sub === 'guide') return viewGuide(id);
+    if (sub === 'guide') return viewGuide(id, arg);
     if (sub === 'new') return viewNew(id);
     if (sub === 'edit') return viewEdit(id, arg);
     return viewPatient(id);
@@ -842,7 +863,7 @@ async function route() {
 // אחרי סנכרון: מרעננים את המסך, אלא אם תמר באמצע הקלדה או הקלטה
 onChange(() => {
   const typing = $view.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-  if (typing || current || guideRec || location.hash.endsWith('/new') || location.hash.includes('/edit/')) return;
+  if (typing || current || guideRec || location.hash.endsWith('/new') || location.hash.includes('/edit/') || /\/guide\/./.test(location.hash)) return;
   route();
 });
 

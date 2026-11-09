@@ -167,6 +167,12 @@ export const db = {
     data.guidance.push(g);
     save('guidance', g);
   },
+  updateGuidance(g) {
+    const i = data.guidance.findIndex((x) => x.id === g.id);
+    if (i >= 0) data.guidance[i] = g;
+    else data.guidance.push(g);
+    save('guidance', g);
+  },
   deleteGuidance(id) {
     data.guidance = data.guidance.filter((g) => g.id !== id);
     remove('guidance', id);
