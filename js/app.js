@@ -390,6 +390,30 @@ function newDraft(pid) {
   return { v: 2, patientId: pid, step: 'date', date: null, items };
 }
 
+// טיוטה שנשמרה לפני שהמטרות הגיעו למכשיר (או לפני שנוספו) לא הכילה רובריקות של מטרות.
+// מעדכנים אותה לפי התל"א הנוכחי: מוסיפים מטרות חסרות, מרעננים כותרות, ומסירים מטרות שנמחקו אם אין בהן תוכן.
+function syncDraftGoals(d) {
+  const goals = db.activeGoals(d.patientId);
+  const ids = new Set(goals.map((g) => g.id));
+  let changed = false;
+  const hasContent = (it) => it.clips.length || (it.text && it.text.trim());
+  const before = d.items.length;
+  d.items = d.items.filter((it) => it.kind !== 'goal' || ids.has(it.goalId) || hasContent(it));
+  if (d.items.length !== before) changed = true;
+  const firstOther = d.items.findIndex((it) => it.kind !== 'goal');
+  goals.forEach((g, i) => {
+    const it = d.items.find((x) => x.kind === 'goal' && x.goalId === g.id);
+    if (it) {
+      if (it.title !== g.name) { it.title = g.name; changed = true; }
+    } else {
+      const at = firstOther < 0 ? d.items.length : d.items.findIndex((x) => x.kind !== 'goal');
+      d.items.splice(Math.min(i, at), 0, { key: g.id, kind: 'goal', goalId: g.id, title: g.name, clips: [], text: '' });
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 let current = null; // הקלטה פעילה: { pid, key, handle, timer }
 
 // עוצר את ההקלטה הפעילה, שומר אותה במכשיר ושולח לתמלול ברקע. מחזיר את המפתח של הרובריקה שנעצרה.
@@ -489,6 +513,7 @@ function updateItemDOM(d, it) {
 function viewNew(pid) {
   const p = db.patient(pid);
   const d = loadDraft(pid) || newDraft(pid);
+  if (d.step === 'date' || !current) syncDraftGoals(d);
   saveDraft(d);
   const back = `#/p/${pid}`;
   const title = `טיפול חדש · ${p.name}`;
