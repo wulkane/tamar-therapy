@@ -176,7 +176,8 @@ function viewTala(id) {
     </div>
   `, `#/p/${id}`);
 
-  const goalOf = (el) => p.tala.goals.find((g) => g.id === el.closest('[data-goal]').dataset.goal);
+  // תמיד מחפשים במטופל העדכני: אחרי סנכרון הנתונים המקומיים מוחלפים בעותק חדש, והעותק שנטען בפתיחת המסך כבר לא נשמר
+  const goalOf = (el) => db.patient(id).tala.goals.find((g) => g.id === el.closest('[data-goal]').dataset.goal);
   const autosize = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
   $view.querySelectorAll('.tala-row textarea').forEach(autosize);
 
