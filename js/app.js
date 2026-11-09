@@ -542,6 +542,13 @@ function viewNew(pid) {
 
   // מסך אחד: מקליטים, ובזמן שמקליטים את הרובריקה הבאה הקודמת כבר מתומללת ומופיעה לעריכה
   const goals = d.items.filter((it) => it.kind === 'goal');
+  // היעדים של המטרה נלקחים מהתל"א הנוכחי ולא נשמרים בטיוטה, כך שהם תמיד מעודכנים
+  const objectivesOf = (it) => {
+    if (it.kind !== 'goal') return '';
+    const g = db.patient(pid)?.tala.goals.find((x) => x.id === it.goalId);
+    const objs = (g?.objectives || []).filter((o) => o.active !== false && o.name);
+    return objs.length ? `<ul class="objectives">${objs.map((o) => `<li>${esc(o.name)}</li>`).join('')}</ul>` : '';
+  };
   const block = (it) => `
     <div class="segment rubric ${it.kind}" data-item="${it.key}">
       <button type="button" class="rec-item">
@@ -550,6 +557,7 @@ function viewNew(pid) {
         <span class="timer"></span>
         <span class="status">${itemStatus(it)}</span>
       </button>
+      ${objectivesOf(it)}
       <button type="button" class="link-btn write-btn" data-write>✎ כתיבה</button>
       <textarea data-text rows="3" placeholder="אפשר להקליד כאן. התמלול של ההקלטה יופיע כאן ואפשר לתקן אותו." hidden>${esc(it.text)}</textarea>
       <div class="raw err-line"></div>
