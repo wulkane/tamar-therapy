@@ -239,7 +239,7 @@ function viewTable(id) {
       <table>
         <thead><tr><th>תאריך</th><th>מה היה בטיפול</th><th>הערות לפעם הבאה</th></tr></thead>
         <tbody>
-          ${ss.map((s) => `<tr><td class="date">${fmtShort(s.date)}</td><td>${summaryHTML(s.summary)}</td><td>${esc(s.nextNotes) || '<span class="muted">—</span>'}</td></tr>`).join('')}
+          ${ss.map((s) => `<tr><td class="date">${fmtShort(s.date)}<br><a href="#/p/${id}/edit/${s.id}" aria-label="עריכה">✎ עריכה</a></td><td>${summaryHTML(s.summary)}</td><td>${esc(s.nextNotes) || '<span class="muted">—</span>'}</td></tr>`).join('')}
         </tbody>
       </table>
     </div>` : emptyState('עדיין לא תועדו טיפולים.'), `#/p/${id}`);
@@ -256,6 +256,7 @@ function viewLast(id) {
       <div><label>מה היה בטיפול</label>${summaryHTML(s.summary)}</div>
       <div class="divider">${art('leaf')}</div>
       <div><label>הערות לפעם הבאה</label>${esc(s.nextNotes) || '<span class="muted">—</span>'}</div>
+      <a class="edit-link" href="#/p/${id}/edit/${s.id}">✎ עריכת התיעוד</a>
     </div>` : emptyState('עדיין לא תועדו טיפולים.'), `#/p/${id}`);
 }
 
@@ -388,6 +389,16 @@ function newDraft(pid) {
   items.push({ key: 'extra', kind: 'extra', title: 'נושא נוסף', clips: [], text: '' });
   items.push({ key: 'notes', kind: 'notes', title: 'הערות לפעם הבאה', clips: [], text: '' });
   return { v: 2, patientId: pid, step: 'date', date: null, items };
+}
+
+// פירוט ויעדים של מטרה, נלקחים מהתל"א הנוכחי ולא נשמרים בטיוטה, כך שהם תמיד מעודכנים
+function goalGuideHTML(pid, goalId) {
+  const g = db.patient(pid)?.tala.goals.find((x) => x.id === goalId);
+  const lines = [
+    ...(g?.details || []).filter((t) => t && t.trim()),
+    ...(g?.objectives || []).filter((o) => o.active !== false && o.name).map((o) => o.name),
+  ];
+  return lines.length ? `<ul class="goal-guide">${lines.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
 }
 
 // טיוטה שנשמרה לפני שהמטרות הגיעו למכשיר (או לפני שנוספו) לא הכילה רובריקות של מטרות.
@@ -542,13 +553,7 @@ function viewNew(pid) {
 
   // מסך אחד: מקליטים, ובזמן שמקליטים את הרובריקה הבאה הקודמת כבר מתומללת ומופיעה לעריכה
   const goals = d.items.filter((it) => it.kind === 'goal');
-  // היעדים של המטרה נלקחים מהתל"א הנוכחי ולא נשמרים בטיוטה, כך שהם תמיד מעודכנים
-  const objectivesOf = (it) => {
-    if (it.kind !== 'goal') return '';
-    const g = db.patient(pid)?.tala.goals.find((x) => x.id === it.goalId);
-    const objs = (g?.objectives || []).filter((o) => o.active !== false && o.name);
-    return objs.length ? `<ul class="objectives">${objs.map((o) => `<li>${esc(o.name)}</li>`).join('')}</ul>` : '';
-  };
+  const objectivesOf = (it) => (it.kind === 'goal' ? goalGuideHTML(pid, it.goalId) : '');
   const block = (it) => `
     <div class="segment rubric ${it.kind}" data-item="${it.key}">
       <button type="button" class="rec-item">
@@ -651,6 +656,65 @@ function viewNew(pid) {
 
   processQueue(d); // ממשיך תמלול שלא הסתיים, גם אחרי טעינה מחדש של הדף
 }
+
+// ---------- עריכת תיעוד טיפול שנשמר ----------
+function viewEdit(pid, sid) {
+  const s = db.sessionsOf(pid).find((x) => x.id === sid);
+  if (!s) return (location.hash = `#/p/${pid}/last`);
+  const p = db.patient(pid);
+  const pick = (sec) => ({ text: sec?.text || '', raw: sec?.raw || '', fileIds: sec?.fileIds || [] });
+  const rows = [];
+  const used = new Set();
+  db.activeGoals(pid).forEach((g) => {
+    const sec = s.sections.find((x) => x.kind === 'goal' && x.goalId === g.id);
+    if (sec) used.add(sec);
+    rows.push({ kind: 'goal', goalId: g.id, title: sec?.title || g.name, ...pick(sec) });
+  });
+  s.sections.filter((x) => x.kind === 'goal' && !used.has(x)).forEach((sec) => rows.push({ kind: 'goal', goalId: sec.goalId, title: sec.title, ...pick(sec) })); // מטרות שהוסרו מהתל"א
+  const extra = s.sections.find((x) => x.kind === 'extra');
+  rows.push({ kind: 'extra', goalId: null, title: 'נושא נוסף', ...pick(extra) });
+
+  render(`עריכת תיעוד · ${p.name}`, `
+    <div class="stack">
+      <div class="card stack">
+        <label for="e-date">תאריך הטיפול</label>
+        <input type="date" id="e-date" value="${esc(s.date)}" max="${todayISO()}">
+      </div>
+      ${rows.map((r, i) => `
+        <div class="segment rubric ${r.kind}">
+          <label><b>${esc(r.title)}</b></label>
+          ${r.kind === 'goal' ? goalGuideHTML(pid, r.goalId) : ''}
+          <textarea data-edit-i="${i}" rows="3">${esc(r.text)}</textarea>
+        </div>`).join('')}
+      <div class="segment rubric notes">
+        <label><b>הערות לפעם הבאה</b></label>
+        <textarea id="e-notes" rows="3">${esc(s.nextNotes || '')}</textarea>
+      </div>
+      <div class="row">
+        <button id="e-save">💾 שמירת השינויים</button>
+        <button class="secondary" id="e-cancel">ביטול</button>
+      </div>
+    </div>`, `#/p/${pid}/last`);
+
+  on('[data-edit-i]', 'input', (e) => autosizeTA(e.target));
+  $view.querySelectorAll('[data-edit-i], #e-notes').forEach(autosizeTA);
+  on('#e-cancel', 'click', () => (location.hash = `#/p/${pid}/last`));
+  on('#e-save', 'click', () => {
+    const date = $view.querySelector('#e-date').value;
+    if (!date) { toast('צריך לבחור תאריך'); return; }
+    const sections = rows
+      .map((r, i) => ({ kind: r.kind, goalId: r.goalId, title: r.title, text: $view.querySelector(`[data-edit-i="${i}"]`).value.trim(), raw: r.raw, fileIds: r.fileIds }))
+      .filter((x) => x.text);
+    db.updateSession({
+      ...s, date, sections, summary: compile(sections),
+      nextNotes: $view.querySelector('#e-notes').value.trim(),
+      editedAt: new Date().toISOString(),
+    });
+    toast('🌸 השינויים נשמרו');
+    location.hash = `#/p/${pid}/last`;
+  });
+}
+const autosizeTA = (t) => { t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight, 70) + 'px'; };
 
 async function discard(d) {
   if (!confirm('לבטל את הטיפול? ההקלטות שעוד לא תומללו יימחקו.')) return;
@@ -755,7 +819,7 @@ async function route() {
   if (!location.hash.endsWith('/new')) releaseMic();
 
   const [path, query] = location.hash.replace(/^#\/?/, '').split('?');
-  const [a, id, sub] = path.split('/');
+  const [a, id, sub, arg] = path.split('/');
   if (a === 'connect') {
     const q = new URLSearchParams(query);
     return connect(q.get('u') || '', q.get('t') || '');
@@ -768,6 +832,7 @@ async function route() {
     if (sub === 'last') return viewLast(id);
     if (sub === 'guide') return viewGuide(id);
     if (sub === 'new') return viewNew(id);
+    if (sub === 'edit') return viewEdit(id, arg);
     return viewPatient(id);
   }
   if (a === 'settings') return viewSettings();
@@ -777,7 +842,7 @@ async function route() {
 // אחרי סנכרון: מרעננים את המסך, אלא אם תמר באמצע הקלדה או הקלטה
 onChange(() => {
   const typing = $view.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-  if (typing || current || guideRec || location.hash.endsWith('/new')) return;
+  if (typing || current || guideRec || location.hash.endsWith('/new') || location.hash.includes('/edit/')) return;
   route();
 });
 

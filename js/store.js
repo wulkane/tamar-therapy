@@ -154,6 +154,13 @@ export const db = {
     save('session', s);
   },
 
+  updateSession(s) {
+    const i = data.sessions.findIndex((x) => x.id === s.id);
+    if (i >= 0) data.sessions[i] = s;
+    else data.sessions.push(s);
+    save('session', s);
+  },
+
   guidanceOf: (patientId) =>
     data.guidance.filter((g) => g.patientId === patientId).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
   addGuidance(g) {
